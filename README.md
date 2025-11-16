@@ -4,7 +4,7 @@ Nightly Docker image for the RustDesk Server OSS
 
 ## Usage
 
-Replace the image name from `rustdesk/rustdesk-server` to `ghcr.io/nerahikada/rustdesk-server-nightly`
+Replace the image name from `rustdesk/rustdesk-server` to `ghcr.io/nerahikada/rustdesk-server-nightly`.
 
 Example:
 
