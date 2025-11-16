@@ -1,4 +1,4 @@
-FROM rust:trixie as builder
+FROM rust:trixie AS builder
 ARG CARGO_TERM_COLOR=always
 COPY rustdesk-server/ /rustdesk-server/
 WORKDIR /rustdesk-server
