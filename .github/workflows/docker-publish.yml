@@ -77,7 +77,9 @@ jobs:
             type=raw,value=${{ steps.commit-hash.outputs.short }},enable={{is_default_branch}},priority=1000
             type=raw,value=latest,enable={{is_default_branch}},priority=200
             type=raw,value=${{ steps.commit-hash.outputs.long }},enable={{is_default_branch}},priority=100
-            type=ref,prefix=ref-,enable={{is_not_default_branch}}
+            type=ref,enable={{is_not_default_branch}},event=branch
+            type=ref,enable={{is_not_default_branch}},event=tag
+            type=ref,enable={{is_not_default_branch}},prefix=pr-,event=pr
 
       - name: Build and push Docker image
         id: build-and-push
