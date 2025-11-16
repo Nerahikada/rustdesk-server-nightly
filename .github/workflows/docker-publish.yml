@@ -76,7 +76,7 @@ jobs:
           tags: |
             type=raw,value=${{ steps.commit-hash.outputs.short }},enable={{is_default_branch}},priority=1000
             type=raw,value=latest,enable={{is_default_branch}},priority=200
-            type=raw,value=${{ steps.commit-hash.outputs.long }},enable={{is_default_branch}},priority=100
+            type=raw,value=${{ steps.commit-hash.outputs.full }},enable={{is_default_branch}},priority=100
             type=ref,enable={{is_not_default_branch}},event=branch
             type=ref,enable={{is_not_default_branch}},event=tag
             type=ref,enable={{is_not_default_branch}},prefix=pr-,event=pr
