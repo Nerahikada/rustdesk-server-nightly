@@ -7,3 +7,4 @@ RUN cargo build --release
 FROM debian:trixie-slim
 COPY --from=builder /rustdesk-server/target/release/hbbs /usr/bin/hbbs
 COPY --from=builder /rustdesk-server/target/release/hbbr /usr/bin/hbbr
+WORKDIR /root
