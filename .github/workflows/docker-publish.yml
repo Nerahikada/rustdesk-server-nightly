@@ -13,7 +13,25 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  check-cache:
+    runs-on: ubuntu-latest
+    outputs:
+      skip-build: ${{ steps.cache.outputs.cache-hit }}
+    steps:
+      - uses: actions/checkout@v5
+        id: checkout
+        with:
+          repository: rustdesk/rustdesk-server
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: .cache_marker
+          key: ${{ steps.checkout.outputs.commit }}
+      - run: touch .cache_marker
+
   build:
+    needs: check-cache
+    if: needs.check-cache.outputs.skip-build != 'true'
 
     runs-on: ubuntu-latest
     permissions:
