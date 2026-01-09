@@ -52,14 +52,6 @@ jobs:
           submodules: true
           path: rustdesk-server
 
-      # Temporary workaround for submodule issue in RustDesk Server
-      # See: https://github.com/rustdesk/rustdesk-server/pull/553#issuecomment-3097872548
-      - name: Fix broken submodule (temporary)
-        run: |
-          cd rustdesk-server
-          git rm -r libs/
-          git submodule add https://github.com/rustdesk/hbb_common.git libs/hbb_common
-
       - name: Extract full and short commit hash
         id: commit-hash
         run: |
