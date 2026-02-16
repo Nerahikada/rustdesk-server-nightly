@@ -7,71 +7,59 @@ on:
   workflow_dispatch:
 
 env:
-  # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
-  # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  check-cache:
-    runs-on: ubuntu-latest
-    outputs:
-      skip-build: ${{ steps.cache.outputs.cache-hit }}
-    steps:
-      - uses: actions/checkout@v5
-        id: checkout
-        with:
-          repository: rustdesk/rustdesk-server
-      - uses: actions/cache@v4
-        id: cache
-        with:
-          path: .cache_marker
-          key: ${{ steps.checkout.outputs.commit }}
-      - run: touch .cache_marker
-
   build:
-    needs: check-cache
-    if: needs.check-cache.outputs.skip-build != 'true'
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      # This is used to complete the identity challenge with sigstore/fulcio when running outside of PRs.
-      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Fetch latest rustdesk-server commit
+        id: upstream
+        run: |
+          COMMIT=$(git ls-remote https://github.com/rustdesk/rustdesk-server.git HEAD | cut -f1)
+          echo "full=${COMMIT}" >> $GITHUB_OUTPUT
+          echo "short=$(echo ${COMMIT} | cut -c 1-7)" >> $GITHUB_OUTPUT
+
+      - name: Check if version already exists
+        id: check
+        run: |
+          IMAGE_NAME=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          SHORT="${{ steps.upstream.outputs.short }}"
+
+          if docker manifest inspect ${IMAGE_NAME}:${SHORT} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Version ${SHORT} already exists in registry"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Version ${SHORT} not found, will build new image"
+          fi
+
       - name: Checkout RustDesk Server repository
-        id: checkout
+        if: steps.check.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v5
         with:
           repository: rustdesk/rustdesk-server
           submodules: true
           path: rustdesk-server
 
-      - name: Extract full and short commit hash
-        id: commit-hash
-        run: |
-          echo "full=${{ steps.checkout.outputs.commit }}" >> $GITHUB_OUTPUT
-          echo "short=$(echo ${{ steps.checkout.outputs.commit }} | cut -c 1-7 )" >> $GITHUB_OUTPUT
-
-      - name: Install cosign
-        if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v4.0.0
-        with:
-          cosign-release: 'v2.5.3'
-
       - name: Set up QEMU
+        if: steps.check.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        if: steps.check.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
         uses: docker/setup-buildx-action@v3
 
       - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
+        if: steps.check.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -80,19 +68,20 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
+        if: steps.check.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ steps.commit-hash.outputs.short }},enable={{is_default_branch}},priority=1000
+            type=raw,value=${{ steps.upstream.outputs.short }},enable={{is_default_branch}},priority=1000
             type=raw,value=latest,enable={{is_default_branch}},priority=200
-            type=raw,value=${{ steps.commit-hash.outputs.full }},enable={{is_default_branch}},priority=100
+            type=raw,value=${{ steps.upstream.outputs.full }},enable={{is_default_branch}},priority=100
             type=ref,enable={{is_not_default_branch}},event=branch
             type=ref,enable={{is_not_default_branch}},event=tag
             type=ref,enable={{is_not_default_branch}},prefix=pr-,event=pr
 
       - name: Build and push Docker image
-        id: build-and-push
+        if: steps.check.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
         uses: docker/build-push-action@v6
         with:
           context: .
